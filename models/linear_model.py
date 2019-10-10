@@ -1,7 +1,6 @@
 from itertools import chain
 from models.variable import Variable
 from models.restriction import Restriction
-from models.simplex import Simplex
 import numpy as np
 
 
@@ -18,10 +17,15 @@ class LinearModel:
         self.m = None
         self.n = None
 
-    def build_objective_function(self, variables: list):
+    def build_objective_function(self, fo_type: str, variables: list):
         self.objective_function = []
+        if fo_type != 'min' and fo_type != 'max':
+            raise ValueError("Argument fo_type must be 'min' or 'max'")
+
         for index, v in enumerate(variables):
             if isinstance(v, Variable):
+                if fo_type == 'max':
+                    v.fo_coefficient = -1 * v.fo_coefficient
                 v.internal_name = 'x{0}'.format(index + 1)
                 v.internal_initial_index = index
                 self.objective_function.append(v)
@@ -29,7 +33,7 @@ class LinearModel:
                 raise TypeError("Expected argument of type Variable() but found {0}".format(type(v)))
 
     def print_objective_function(self):
-        fo = 'Objective Function:\nFo(x) = '
+        fo = 'Objective Function:\n min Fo(x) = '
         if not self.objective_function:
             print('No variables were added to the objective function...')
             return
@@ -64,13 +68,12 @@ class LinearModel:
 
     # TODO: Impement '<=' and '='
     def transform_to_standard_form(self):
-        slack_index = 0
-        excess_index = 0
+        next_index = len(self.objective_function)
         for r in self.restrictions:
             if r.equality_type == 0:  # <=
                 slack_var = Variable(fo_coefficient=0, v_type='Slack')
-                slack_var.internal_initial_index = slack_index
-                slack_var.internal_name = 's{0}'.format(slack_index + 1)
+                slack_var.internal_initial_index = next_index
+                slack_var.internal_name = 's{0}'.format(next_index + 1)
                 self.objective_function.append(slack_var)
 
                 for _r in self.restrictions:
@@ -79,7 +82,7 @@ class LinearModel:
                     else:
                         _r.coefficients.append((0, slack_var))
 
-                slack_index = slack_index + 1
+                next_index = next_index + 1
 
             elif r.equality_type == 1:  # >=
                 pass
@@ -103,9 +106,6 @@ class LinearModel:
 
             self.b[index] = r.restriction_value
 
-        print('D')
-
-
 
 if __name__ == '__main__':
     # Declaring Variables
@@ -122,4 +122,4 @@ if __name__ == '__main__':
     model.add_restrictions([r1, r2, r3])
     model.transform_to_standard_form()
 
-    simplex = Simplex(linear_model=model)
+    print('Linear Model test passed')

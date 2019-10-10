@@ -3,6 +3,9 @@ class Restriction:
         self.inequality = inequality
         self.restriction_value = restriction_value
 
+        if self.restriction_value < 0:
+            raise ValueError("Restriction may not have a negative value on the right hand side")
+
         if inequality == '<=':
             self.equality_type = 0
         elif inequality == '>=':
