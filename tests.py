@@ -1,7 +1,7 @@
 from models.variable import Variable
 from models.restriction import Restriction
 from models.linear_model import LinearModel
-from models.simplex import Simplex
+from models.internal.simplex_solver import SimplexSolver
 
 # Declaring Variables
 x1 = Variable(fo_coefficient=-1)
@@ -18,7 +18,7 @@ model.add_restrictions([r1, r2, r3])
 model.transform_to_standard_form()
 
 
-solver = Simplex(linear_model=model, start_base=[2, 3, 4])
+solver = SimplexSolver(linear_model=model, start_base=[2, 3, 4])
 solver.solve()
 solution = solver.solution
 print('Linear Model test passed')

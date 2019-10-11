@@ -25,6 +25,9 @@ class LinearModel:
         if fo_type != 'min' and fo_type != 'max':
             raise ValueError("Argument fo_type must be 'min' or 'max'")
 
+        if fo_type == 'max':
+            print('[WARNING] max problems will be converted to min')
+
         for index, v in enumerate(variables):
             if isinstance(v, Variable):
                 if fo_type == 'max':
@@ -110,6 +113,7 @@ class LinearModel:
                 raise ValueError("Invalid Equality Type")
 
         self.autobuild_matrices()
+        self.is_standard_form = True
 
     def autobuild_matrices(self):
         # lines, columns
@@ -127,6 +131,18 @@ class LinearModel:
 
             self.b[index] = r.restriction_value
 
+    def __repr__(self):
+        return str(self)
+
+    def __str__(self):
+        m = '\nModel:\n'
+        m = m + 'min Fo(x)= '
+        for v in self.objective_function:
+            m = m + str(v.fo_coefficient) + '*' + str(v) + ' '
+        m = m + '\n\n'
+        for r in self.restrictions:
+            m = m + str(r) + '\n'
+        return m
 
 
 if __name__ == '__main__':

@@ -1,112 +1,73 @@
+from copy import deepcopy
+from models.variable import Variable
+from models.restriction import Restriction
 from models.linear_model import LinearModel
-import numpy as np
+from models.base_finder import InitialBaseFinder
+from models.internal.simplex_solver import SimplexSolver
 
 
 class Simplex:
-    def __init__(self, linear_model: LinearModel, start_base=None):
-        self.lm = linear_model
-        self.fix_variables = self.lm.n - self.lm.m
-        self.B_variables = []
-        self.B = np.zeros(shape=(self.lm.m, self.lm.m))
-        self.B_history = {}
-        self.N_variables = []
-        self.N = np.zeros(shape=(self.lm.m, self.fix_variables))
-        self.N_history = {}
-        self.CbT = []
-        self.CnT = []
+    def __init__(self, linear_model: LinearModel, start_base_indexes=None, skip_standard=False):
+        if not linear_model.is_standard_form and not skip_standard:
+            print('\n[WARNING] Transforming your LinearModel in standard form. To skip, use Simplex(skip_standard = True)')
+            linear_model.transform_to_standard_form()
 
-        # Matrix partition
-        self.build_base(start_base=start_base)
+        if start_base_indexes:
+            if not isinstance(start_base_indexes, list) or not len(start_base_indexes) == linear_model.m or not all(isinstance(i, int) for i in start_base_indexes):
+                raise ValueError('\n[FATAL ERROR]: Your start_base_indexes must be a list containing only numbers with m "length" of {0}'.format(linear_model.m))
 
-        # Final solution
-        self.solution = []
-        self.status = ''
-        self.can_have_multiple_solutions = False
-        self.infeasible = False
+        self.linear_model = linear_model
+        self.start_base_indexes = start_base_indexes
 
-    def build_base(self, start_base=None):
-        # Setups initial base
-        if not start_base and not self.B_variables:
-            raise ValueError("You need to specify a start base for the simplex. To find automatically, use InitialBaseFinder")
-        elif start_base and not self.B_variables:
-            start_base = list(set(start_base))
-            if not isinstance(start_base, list) or len(start_base) != self.lm.m:
-                raise ValueError("Start base argument must be a list with a length of {0}".format(self.lm.m))
-            max_index = self.lm.n - 1
-            if any(not isinstance(item, int) or item < 0 or item > max_index for item in start_base):
-                raise ValueError("Start base argument must be a list of positive integers indexes of the variables")
+        # Solution
+        self.fo = None
+        self.variables_values = None
+        self.status = None
 
-            self.B_variables = [item for item in self.lm.objective_function if item.internal_initial_index in start_base]
+    def solve(self):
+        initial_base = None
+        if not self.start_base_indexes:
+            tmp_linear_model = deepcopy(self.linear_model)
+            # Phase 1
+            base_finder = InitialBaseFinder(linear_model=tmp_linear_model)
+            base_finder.find_base()
+            print('\nFound an feasible initial base: {0}'.format(base_finder.solution_B_vars))
+            initial_base = base_finder.solution_B_vars_indexes
+        else:
+            initial_base = self.start_base_indexes
 
-        self.N_variables = [item for item in self.lm.objective_function if item not in self.B_variables]
-        self.N_history[0] = self.N_variables
-        self.B = self.lm.A[:, [i.internal_initial_index for i in self.B_variables]]
-        self.N = self.lm.A[:, [i.internal_initial_index for i in self.N_variables]]
-        self.CbT = [item.fo_coefficient for item in self.B_variables]
-        self.CnT = [item.fo_coefficient for item in self.N_variables]
+        # Phase 2
+        solver = SimplexSolver(linear_model=self.linear_model, start_base=initial_base)
+        solver.solve()
+        self.variables_values = solver.solution
+        self.fo = solver.solution_fo
+        self.status = solver.status
+        return solver.solution
 
-    # Actual simplex algorithm
-    def solve(self, max_iterations=1000, __iteration__=1):
-        if __iteration__ > max_iterations:
-            raise TimeoutError("Max iterations were made: {0}".format(max_iterations))
-
-        # Who should join the base?
-        B_inv = np.linalg.inv(self.B)
-        simplex_multiplierT = np.dot(self.CbT, B_inv)
-        relative_costs = [v.fo_coefficient - np.dot(simplex_multiplierT, self.N[:, index]) for index, v in
-                          enumerate(self.N_variables)]
-        negative_relative_costs = [i for i in relative_costs if i < 0]
-        variable_join_N_index = None
-        if len(negative_relative_costs) > 0:
-            variable_join_N_index = relative_costs.index(min(negative_relative_costs))
-
-        # Is my base optimal?
-        if variable_join_N_index is None:
-            sol = []
-            _xb = np.dot(B_inv, self.lm.b)
-            for v in self.lm.objective_function:
-                if v in self.B_variables:
-                    v_B_index = self.B_variables.index(v)
-                    sol.append((v, _xb[v_B_index][0]))
-                elif v in self.N_variables:
-                    sol.append((v, 0))
-            self.solution = sol
-
-            can_be_multiple = False
-            for k in relative_costs:
-                if k == 0:
-                    self.status = 'Solution might have multiple other solutions, because a relative cost was 0'
-                    can_be_multiple = True
-                    break
-
-            if not can_be_multiple:
-                self.status = 'Optimal'
-            return
-
-        # Who should I take out from base?
-        simplex_direction = np.dot(B_inv, self.N[:, [variable_join_N_index]])
-        y = [i for i in simplex_direction]
-        y_sanity_check = [i for i in simplex_direction if i > 0]
-        if not y_sanity_check or len(y_sanity_check) <= 0:
-            raise InterruptedError("The model has unlimited solutions")
-
-        xb = np.dot(B_inv, self.lm.b)
-        steps = [item/y[index] if y[index] != 0 else -1 for index, item in enumerate(xb)]
-        steps_excluding_negative = [i for i in steps if i > 0]
-        variable_leave_B_index = np.where(steps == min(steps_excluding_negative))[0][0]
-
-        variable_leave_B = self.B_variables[variable_leave_B_index]
-        variable_join_N = self.N_variables[variable_join_N_index]
-
-        # Setting up new base (tmp to avoid Python allocation by memory)
-        self.B_variables[variable_leave_B_index] = variable_join_N
-        self.N_variables[variable_join_N_index] = variable_leave_B
-
-        self.build_base()
-        self.solve(__iteration__=__iteration__ + 1)
+    @property
+    def solution_str(self):
+        return '\nFound a solution:\nStatus: {0}\n\nFo(x): {1}\n\nVariables: {2}\n\n'.format(self.status, self.fo, self.variables_values)
 
 
 
+if __name__ == '__main__':
+    # Declaring Variables
+    x1 = Variable(fo_coefficient=4)
+    x2 = Variable(fo_coefficient=3)
+    r1 = Restriction([(1, x1), (3, x2)], '<=', 7)
+    r2 = Restriction([(2, x1), (2, x2)], '<=', 8)
+    r3 = Restriction([(1, x1), (1, x2)], '<=', 3)
 
+    # x1 >= 0 and x2 >= 0 are automatically assumed
 
+    # Building a LP Model
+    model = LinearModel()
+    model.build_objective_function(fo_type='max', variables=[x1, x2])
+    model.add_restrictions([r1, r2, r3])
+    model.transform_to_standard_form()
+    print(model)
 
+    # Simplex Algorithm
+    simplex = Simplex(linear_model=model)
+    simplex.solve()
+    print(simplex.solution_str)

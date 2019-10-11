@@ -1,6 +1,6 @@
 from models.variable import Variable
 from models.linear_model import LinearModel
-from models.simplex import Simplex
+from models.internal.simplex_solver import SimplexSolver
 import numpy as np
 
 
@@ -12,7 +12,7 @@ class InitialBaseFinder:
         self.artificial_lm.next_var_index = linear_model.next_var_index
 
         # Internal Helper
-        self.simplex = None
+        self.simplex_solver = None
 
         # Artificial Solution
         self.solution_N_vars = []
@@ -21,7 +21,6 @@ class InitialBaseFinder:
         self.solution_B_vars_indexes = []
         self.solution_FO_value = None
         self.solution_success = False
-
 
         for r in self.artificial_lm.restrictions:
             if r.equality_type == 0: #<=
@@ -50,17 +49,17 @@ class InitialBaseFinder:
         self.artificial_lm.build_objective_function(fo_type='min', variables=self.artificial_variables, __do_not_rename__=True)
         self.artificial_lm.autobuild_matrices()
         start_base = [i.internal_initial_index for i in self.artificial_variables if i.fo_coefficient == 1]
-        self.simplex = Simplex(linear_model=self.artificial_lm, start_base=start_base)
+        self.simplex_solver = SimplexSolver(linear_model=self.artificial_lm, start_base=start_base)
 
     def find_base(self, max_iterations=1000, __iteration__=1):
         if __iteration__ > max_iterations:
             raise TimeoutError("Max iterations were made: {0}".format(max_iterations))
 
         # Who should join the base?
-        B_inv = np.linalg.inv(self.simplex.B)
-        simplex_multiplierT = np.dot(self.simplex.CbT, B_inv)
-        relative_costs = [v.fo_coefficient - np.dot(simplex_multiplierT, self.simplex.N[:, index]) for index, v in
-                          enumerate(self.simplex.N_variables)]
+        B_inv = np.linalg.inv(self.simplex_solver.B)
+        simplex_multiplierT = np.dot(self.simplex_solver.CbT, B_inv)
+        relative_costs = [v.fo_coefficient - np.dot(simplex_multiplierT, self.simplex_solver.N[:, index]) for index, v in
+                          enumerate(self.simplex_solver.N_variables)]
         negative_relative_costs = [i for i in relative_costs if i < 0]
         variable_join_N_index = None
         if len(negative_relative_costs) > 0:
@@ -71,17 +70,17 @@ class InitialBaseFinder:
             sol = []
             _xb = np.dot(B_inv, self.artificial_lm.b)
             for v in self.artificial_lm.objective_function:
-                if v in self.simplex.B_variables:
-                    v_B_index = self.simplex.B_variables.index(v)
+                if v in self.simplex_solver.B_variables:
+                    v_B_index = self.simplex_solver.B_variables.index(v)
                     sol.append((v, _xb[v_B_index][0]))
-                elif v in self.simplex.N_variables:
+                elif v in self.simplex_solver.N_variables:
                     sol.append((v, 0))
-            self.simplex.solution = sol
-            self.solution_B_vars = self.simplex.B_variables
-            self.solution_B_vars_indexes = [i.internal_initial_index for i in self.simplex.B_variables]
-            self.solution_N_vars = self.simplex.N_variables
-            self.solution_N_vars_indexes = [i.internal_initial_index for i in self.simplex.N_variables]
-            self.solution_FO_value = np.dot(self.simplex.CbT, _xb)
+            self.simplex_solver.solution = sol
+            self.solution_B_vars = self.simplex_solver.B_variables
+            self.solution_B_vars_indexes = [i.internal_initial_index for i in self.simplex_solver.B_variables]
+            self.solution_N_vars = self.simplex_solver.N_variables
+            self.solution_N_vars_indexes = [i.internal_initial_index for i in self.simplex_solver.N_variables]
+            self.solution_FO_value = np.dot(self.simplex_solver.CbT, _xb)
             if self.solution_FO_value >= 0:
                 self.solution_success = True
             else:
@@ -89,15 +88,15 @@ class InitialBaseFinder:
             can_be_multiple = False
             for k in relative_costs:
                 if k == 0:
-                    self.simplex.status = 'Solution might have multiple other solutions, because a relative cost was 0'
+                    self.simplex_solver.status = 'Solution might have multiple other solutions, because a relative cost was 0'
                     can_be_multiple = True
                     break
             if not can_be_multiple:
-                self.simplex.status = 'Optimal'
+                self.simplex_solver.status = 'Optimal'
             return
 
         # Who should I take out from base?
-        simplex_direction = np.dot(B_inv, self.simplex.N[:, [variable_join_N_index]])
+        simplex_direction = np.dot(B_inv, self.simplex_solver.N[:, [variable_join_N_index]])
         y = [i for i in simplex_direction]
         y_sanity_check = [i for i in simplex_direction if i > 0]
         if not y_sanity_check or len(y_sanity_check) <= 0:
@@ -105,15 +104,15 @@ class InitialBaseFinder:
 
         xb = np.dot(B_inv, self.artificial_lm.b)
         steps = [item/y[index] if y[index] != 0 else -1 for index, item in enumerate(xb)]
-        steps_excluding_negative = [i for i in steps if i > 0]
+        steps_excluding_negative = [i for i in steps if i >= 0]
         variable_leave_B_index = np.where(steps == min(steps_excluding_negative))[0][0]
 
-        variable_leave_B = self.simplex.B_variables[variable_leave_B_index]
-        variable_join_N = self.simplex.N_variables[variable_join_N_index]
+        variable_leave_B = self.simplex_solver.B_variables[variable_leave_B_index]
+        variable_join_N = self.simplex_solver.N_variables[variable_join_N_index]
 
         # Setting up new base (tmp to avoid Python allocation by memory)
-        self.simplex.B_variables[variable_leave_B_index] = variable_join_N
-        self.simplex.N_variables[variable_join_N_index] = variable_leave_B
+        self.simplex_solver.B_variables[variable_leave_B_index] = variable_join_N
+        self.simplex_solver.N_variables[variable_join_N_index] = variable_leave_B
 
-        self.simplex.build_base()
+        self.simplex_solver.build_base()
         self.find_base(__iteration__=__iteration__ + 1)
