@@ -1,6 +1,7 @@
 from models.variable import Variable
 from models.restriction import Restriction
 from models.linear_model import LinearModel
+from models.base_finder import InitialBaseFinder
 from models.simplex import Simplex
 
 # Declaring Variables
@@ -18,7 +19,11 @@ model.add_restrictions([r1, r2, r3])
 model.transform_to_standard_form()
 
 
-solver = Simplex(linear_model=model, start_base=[3, 1, 2])
+base_finder = InitialBaseFinder(linear_model=model)
+base_finder.find_base()
+initial_base = base_finder.solution_B_vars_indexes
+solver = Simplex(linear_model=model, start_base=initial_base)
+
 solver.solve()
 solution = solver.solution
 print('Linear Model test passed')

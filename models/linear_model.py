@@ -5,9 +5,10 @@ import numpy as np
 
 
 class LinearModel:
-    def __init__(self):
+    def __init__(self, is_standard_form=False):
         self.objective_function = None
         self.restrictions = None
+        self.is_standard_form = is_standard_form
 
         # Ax = b -> populates on transform_to_standard_form()
         self.A = None
@@ -17,7 +18,9 @@ class LinearModel:
         self.m = None
         self.n = None
 
-    def build_objective_function(self, fo_type: str, variables: list):
+        self.next_var_index = 0
+
+    def build_objective_function(self, fo_type: str, variables: list, __do_not_rename__=False):
         self.objective_function = []
         if fo_type != 'min' and fo_type != 'max':
             raise ValueError("Argument fo_type must be 'min' or 'max'")
@@ -26,8 +29,9 @@ class LinearModel:
             if isinstance(v, Variable):
                 if fo_type == 'max':
                     v.fo_coefficient = -1 * v.fo_coefficient
-                v.internal_name = 'x{0}'.format(index + 1)
-                v.internal_initial_index = index
+                if not __do_not_rename__:
+                    v.internal_name = 'x{0}'.format(index + 1)
+                    v.internal_initial_index = index
                 self.objective_function.append(v)
             else:
                 raise TypeError("Expected argument of type Variable() but found {0}".format(type(v)))
@@ -66,14 +70,17 @@ class LinearModel:
     def __add_restriction__(self, restriction: Restriction):
         self.restrictions.append(restriction)
 
-    # TODO: Impement '<=' and '='
+    # TODO: Implement '<=' and '='
     def transform_to_standard_form(self):
-        next_index = len(self.objective_function)
+        if self.is_standard_form:
+            return
+
+        self.next_var_index = len(self.objective_function)
         for r in self.restrictions:
             if r.equality_type == 0:  # <=
                 slack_var = Variable(fo_coefficient=0, v_type='Slack')
-                slack_var.internal_initial_index = next_index
-                slack_var.internal_name = 's{0}'.format(next_index + 1)
+                slack_var.internal_initial_index = self.next_var_index
+                slack_var.internal_name = 's{0}'.format(self.next_var_index + 1)
                 self.objective_function.append(slack_var)
 
                 for _r in self.restrictions:
@@ -82,15 +89,29 @@ class LinearModel:
                     else:
                         _r.coefficients.append((0, slack_var))
 
-                next_index = next_index + 1
+                self.next_var_index = self.next_var_index + 1
 
             elif r.equality_type == 1:  # >=
-                pass
+                excess_var = Variable(fo_coefficient=0, v_type='Excess')
+                excess_var.internal_initial_index = self.next_var_index
+                excess_var.internal_name = 's{0}'.format(self.next_var_index + 1)
+                self.objective_function.append(excess_var)
+
+                for _r in self.restrictions:
+                    if r == _r:
+                        _r.coefficients.append((-1, excess_var))
+                    else:
+                        _r.coefficients.append((0, excess_var))
+
+                self.next_var_index = self.next_var_index + 1
             elif r.equality_type == 2:  # =
                 pass
             else:
                 raise ValueError("Invalid Equality Type")
 
+        self.autobuild_matrices()
+
+    def autobuild_matrices(self):
         # lines, columns
         self.m = len(self.restrictions)
         self.n = len(self.objective_function)
@@ -105,6 +126,7 @@ class LinearModel:
             self.A[index] = rc
 
             self.b[index] = r.restriction_value
+
 
 
 if __name__ == '__main__':

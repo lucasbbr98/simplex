@@ -27,8 +27,7 @@ class Simplex:
     def build_base(self, start_base=None):
         # Setups initial base
         if not start_base and not self.B_variables:
-            self.B_variables = self.lm.objective_function[0:self.lm.m]
-            self.B_history[0] = self.B_variables
+            raise ValueError("You need to specify a start base for the simplex. To find automatically, use InitialBaseFinder")
         elif start_base and not self.B_variables:
             start_base = list(set(start_base))
             if not isinstance(start_base, list) or len(start_base) != self.lm.m:
@@ -48,7 +47,6 @@ class Simplex:
 
     # Actual simplex algorithm
     def solve(self, max_iterations=1000, __iteration__=1):
-
         if __iteration__ > max_iterations:
             raise TimeoutError("Max iterations were made: {0}".format(max_iterations))
 
