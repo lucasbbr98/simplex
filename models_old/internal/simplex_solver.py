@@ -1,4 +1,4 @@
-from models.linear_model import LinearModel
+from models_old.linear_model import LinearModel
 import numpy as np
 
 
@@ -99,9 +99,19 @@ class SimplexSolver:
             raise InterruptedError("The model has unlimited solutions")
 
         xb = np.dot(B_inv, self.lm.b)
-        steps = [item/y[index] if y[index] != 0 else -1 for index, item in enumerate(xb)]
-        steps_excluding_negative = [i for i in steps if i > 0]
-        variable_leave_B_index = np.where(steps == min(steps_excluding_negative))[0][0]
+        steps = []
+        for index, item in enumerate(xb):
+            if y[index] != 0:
+                step = item/(y[index])
+                if step == 0 and item < 0:
+                    step = -1  # Will be later ignored
+                steps.append(step)
+            else:
+                steps.append(-1)
+
+        steps_excluding_negative = [i for i in steps if i >= 0]
+        _helper = min(np.where(steps == min(steps_excluding_negative)))
+        variable_leave_B_index = min(np.where(steps == min(steps_excluding_negative)))[0]
 
         variable_leave_B = self.B_variables[variable_leave_B_index]
         variable_join_N = self.N_variables[variable_join_N_index]

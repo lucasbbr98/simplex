@@ -1,9 +1,9 @@
 from copy import deepcopy
-from models.variable import Variable
-from models.restriction import Restriction
-from models.linear_model import LinearModel
-from models.base_finder import InitialBaseFinder
-from models.internal.simplex_solver import SimplexSolver
+from models_old.variable import Variable
+from models_old.restriction import Restriction
+from models_old.linear_model import LinearModel
+from models_old.base_finder import InitialBaseFinder
+from models_old.internal.simplex_solver import SimplexSolver
 
 
 class Simplex:
@@ -52,18 +52,22 @@ class Simplex:
 
 if __name__ == '__main__':
     # Declaring Variables
-    x1 = Variable(fo_coefficient=4)
-    x2 = Variable(fo_coefficient=3)
-    r1 = Restriction([(1, x1), (3, x2)], '<=', 7)
-    r2 = Restriction([(2, x1), (2, x2)], '<=', 8)
-    r3 = Restriction([(1, x1), (1, x2)], '<=', 3)
+    x1 = Variable(fo_coefficient=5)
+    x2 = Variable(fo_coefficient=4/9)
+    x3 = Variable(fo_coefficient=-3)
+    r1 = Restriction([(2, x1), (3, x2), (1, x3)], '<=', 5)
+    r2 = Restriction([(4, x1), (1, x2), (-2/3, x2)], '<=', 11)
+    r3 = Restriction([(4, x1), (1, x2), (-2 / 3, x2)], '<=', 91)
+    r4 = Restriction([(1, x1), (1, x2), (-2 / 3, x2)], '<=', 2)
+    r5 = Restriction([(-1, x2), (-1, x3)], '<=', 6/7)
+    r6 = Restriction([(-1, x1), (-1, x2)], '<=', 34)
 
     # x1 >= 0 and x2 >= 0 are automatically assumed
 
     # Building a LP Model
     model = LinearModel()
-    model.build_objective_function(fo_type='max', variables=[x1, x2])
-    model.add_restrictions([r1, r2, r3])
+    model.build_objective_function(fo_type='max', variables=[x1, x2, x3])
+    model.add_restrictions([r1, r2, r3, r4, r5, r6])
     model.transform_to_standard_form()
     print(model)
 

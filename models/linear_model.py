@@ -1,163 +1,93 @@
-from itertools import chain
-from models.variable import Variable
-from models.restriction import Restriction
-import numpy as np
+from models.function import ObjectiveFunction, Constraint
+from models.variable import Variable, SlackVariable, ExcessVariable
 
 
 class LinearModel:
-    def __init__(self, is_standard_form=False):
-        self.objective_function = None
-        self.restrictions = None
-        self.is_standard_form = is_standard_form
+    def __init__(self, objective_function: ObjectiveFunction, constraints_list: list, name='Example Model'):
 
-        # Ax = b -> populates on transform_to_standard_form()
-        self.A = None
-        self.x = None
-        self.b = None
+        self.name = name
+        if not isinstance(objective_function, ObjectiveFunction):
+            raise TypeError("The objective function must be of type ObjectiveFunction()")
+        self.fo = objective_function
 
-        self.m = None
-        self.n = None
+        if not all([isinstance(c, Constraint) for c in constraints_list]):
+            raise TypeError("The constraint list must only contain items of type Constraint()")
 
-        self.next_var_index = 0
+        self.constraints = constraints_list
+        self.is_standard = False
+        self.next_index = len(self.fo.variables)
 
-    def build_objective_function(self, fo_type: str, variables: list, __do_not_rename__=False):
-        self.objective_function = []
-        if fo_type != 'min' and fo_type != 'max':
-            raise ValueError("Argument fo_type must be 'min' or 'max'")
+        for index, v in enumerate(self.fo.variables):
+            v.internal_initial_index = index
 
-        if fo_type == 'max':
-            print('[WARNING] max problems will be converted to min')
+        for v in self.fo.variables:
+            for c in self.constraints:
+                if v not in c.variables:
+                    c.variables.insert(v.id, v)
+                    c.coefficients.insert(v.id, 0)
 
-        for index, v in enumerate(variables):
-            if isinstance(v, Variable):
-                if fo_type == 'max':
-                    v.fo_coefficient = -1 * v.fo_coefficient
-                if not __do_not_rename__:
-                    v.internal_name = 'x{0}'.format(index + 1)
-                    v.internal_initial_index = index
-                self.objective_function.append(v)
-            else:
-                raise TypeError("Expected argument of type Variable() but found {0}".format(type(v)))
-
-    def print_objective_function(self):
-        fo = 'Objective Function:\n min Fo(x) = '
-        if not self.objective_function:
-            print('No variables were added to the objective function...')
+    def standard_form(self):
+        if self.is_standard:
             return
 
-        for index, v in enumerate(self.objective_function):
-            if v.fo_coefficient >= 0:
-                fo = fo + ' + {0}*{1}'.format(v.fo_coefficient, v.internal_name)
-            else:
-                fo = fo + ' {0}*{1} '.format(v.fo_coefficient, v.internal_name)
+        # FO: Max -> Min
+        if self.fo.function_type == 'max':
+            print("[WARNING]: Transforming 'max' objective function to 'min'")
+            for index, c in enumerate(self.fo.coefficients):
+                self.fo.coefficients[index] = -1 * c
+            self.fo.function_type = 'min'
 
-        print(fo)
-
-    def add_restrictions(self, restrictions:list):
-        self.restrictions = []
-        for index, r in enumerate(restrictions):
-            if isinstance(r, Restriction):
-                # Adds 0 where needed
-                for v in self.objective_function:
-                    if v not in chain(*r.coefficients):
-                        r.coefficients.append((0, v))
-
-                # Sorts to make sure variables are in the correct order (X1, X2..)
-                r.coefficients = sorted(r.coefficients, key=Variable.get_key)
-                r.internal_name = 'R{0}'.format(index + 1)
-                r.internal_initial_index = index
-                self.__add_restriction__(r)
-            else:
-                raise TypeError("Expected type of Restriction() but got {0}".format(type(r)))
-
-    def __add_restriction__(self, restriction: Restriction):
-        self.restrictions.append(restriction)
-
-    # TODO: Implement '<=' and '='
-    def transform_to_standard_form(self):
-        if self.is_standard_form:
-            return
-
-        self.next_var_index = len(self.objective_function)
-        for r in self.restrictions:
-            if r.equality_type == 0:  # <=
-                slack_var = Variable(fo_coefficient=0, v_type='Slack')
-                slack_var.internal_initial_index = self.next_var_index
-                slack_var.internal_name = 's{0}'.format(self.next_var_index + 1)
-                self.objective_function.append(slack_var)
-
-                for _r in self.restrictions:
-                    if r == _r:
-                        _r.coefficients.append((1, slack_var))
+        # Constraints -> Standard form
+        for index, c in enumerate(self.constraints):
+            c.name = 'R{0}'.format(index + 1)
+            if c.equality_operator == '<=':
+                s_var = SlackVariable(name='s{0}'.format(self.next_index + 1), initial_index=self.next_index)
+                self.fo.variables.append(s_var)
+                self.fo.coefficients.append(0)
+                self.next_index = self.next_index + 1
+                for _c in self.constraints:
+                    _c.variables.append(s_var)
+                    if _c == c:
+                        _c.coefficients.append(1)
                     else:
-                        _r.coefficients.append((0, slack_var))
+                        _c.coefficients.append(0)
 
-                self.next_var_index = self.next_var_index + 1
-
-            elif r.equality_type == 1:  # >=
-                excess_var = Variable(fo_coefficient=0, v_type='Excess')
-                excess_var.internal_initial_index = self.next_var_index
-                excess_var.internal_name = 's{0}'.format(self.next_var_index + 1)
-                self.objective_function.append(excess_var)
-
-                for _r in self.restrictions:
-                    if r == _r:
-                        _r.coefficients.append((-1, excess_var))
+            elif c.equality_operator == '>=':
+                e_var = ExcessVariable(name='e{0}'.format(self.next_index + 1), initial_index=self.next_index)
+                self.fo.variables.append(e_var)
+                self.fo.coefficients.append(0)
+                self.next_index = self.next_index + 1
+                for _c in self.constraints:
+                    _c.variables.append(e_var)
+                    if _c == c:
+                        _c.coefficients.append(-1)
                     else:
-                        _r.coefficients.append((0, excess_var))
+                        _c.coefficients.append(0)
 
-                self.next_var_index = self.next_var_index + 1
-            elif r.equality_type == 2:  # =
+            elif c.equality_operator == '=':
                 pass
             else:
-                raise ValueError("Invalid Equality Type")
+                raise ValueError("Equality operator must be either: '<=' or '=' or '>='")
 
-        self.autobuild_matrices()
-        self.is_standard_form = True
-
-    def autobuild_matrices(self):
-        # lines, columns
-        self.m = len(self.restrictions)
-        self.n = len(self.objective_function)
-
-        self.A = np.zeros(shape=(self.m, self.n))
-        self.b = np.zeros(shape=(self.m, 1))
-
-        for index, r in enumerate(self.restrictions):
-            rc = []
-            for c in r.coefficients:
-                rc.append(c[0])
-            self.A[index] = rc
-
-            self.b[index] = r.restriction_value
+        self.is_standard = True
 
     def __repr__(self):
-        return str(self)
-
-    def __str__(self):
-        m = '\nModel:\n'
+        m = '\nModel {0}:\n'.format(self.name)
         m = m + 'min Fo(x)= '
-        for v in self.objective_function:
-            m = m + str(v.fo_coefficient) + '*' + str(v) + ' '
+        for index, v in enumerate(self.fo.variables):
+            m = m + str(self.fo.coefficients[index]) + '*' + str(v) + ' '
         m = m + '\n\n'
-        for r in self.restrictions:
+        for r in self.constraints:
             m = m + str(r) + '\n'
         return m
 
 
 if __name__ == '__main__':
-    # Declaring Variables
-    x1 = Variable(fo_coefficient=-2)
-    x2 = Variable(fo_coefficient=-1)
-    r1 = Restriction([(1, x1), (1, x2)], '<=', 4)
-    r2 = Restriction([(1, x1)], '<=', 3)
-    r3 = Restriction([(1, x2)], '<=', 7/2)
-    # x1 >= 0 and x2 >= 0 are automatically assumed, so no need to worry :D
-
-    # Building a LP Model
-    model = LinearModel()
-    model.build_objective_function([x1, x2])
-    model.add_restrictions([r1, r2, r3])
-    model.transform_to_standard_form()
-
-    print('Linear Model test passed')
+    x1 = Variable(name='x1')
+    x2 = Variable(name='x2')
+    fo = ObjectiveFunction('min', [(80, x1), (60, x2)])
+    c1 = Constraint([(1, x1), (1, x2)], '>=', 1)
+    c2 = Constraint([(-0.05, x1), (0.07, x2)], '<=', 0)
+    model = LinearModel(objective_function=fo, constraints_list=[c1, c2])
+    model.standard_form()
+    print('Linear Model unit test passed')

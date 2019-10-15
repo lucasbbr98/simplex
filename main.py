@@ -1,29 +1,19 @@
 from models.variable import Variable
-from models.restriction import Restriction
+from models.function import ObjectiveFunction, Constraint
 from models.linear_model import LinearModel
-from models.base_finder import InitialBaseFinder
-from models.internal.simplex_solver import SimplexSolver
+from models.phase1 import Phase1
+from models.phase2 import Phase2
 
-# Declaring Variables
-x1 = Variable(fo_coefficient=10)
-x2 = Variable(fo_coefficient=7)
-r1 = Restriction([(2, x1), (1, x2)], '<=', 5000)
-r2 = Restriction([(4, x1), (5, x2)], '<=', 15000)
-# x1 >= 0 and x2 >= 0 are automatically assumed
+x1 = Variable(name='x1')
+x2 = Variable(name='x2')
+fo = ObjectiveFunction('max', [(3, x1), (5, x2)])
+c1 = Constraint([(1, x1)], '<=', 4)
+c2 = Constraint([(2, x2)], '<=', 12)
+c3 = Constraint([(3, x1), (2, x2)], '=', 18)
+model = LinearModel(objective_function=fo, constraints_list=[c1, c2])
+p1 = Phase1(linear_model=model)
+initial_base = p1.find_base()
+p2 = Phase2(linear_model=model, base_indexes=p1.base_variables)
+p2.solve()
 
-# Building a LP Model
-model = LinearModel()
-model.build_objective_function(fo_type='max', variables=[x1, x2])
-model.add_restrictions([r1, r2])
-model.transform_to_standard_form()
-
-# Finds an initial feasible solution
-base_finder = InitialBaseFinder(linear_model=model)
-base_finder.find_base()
-initial_base = base_finder.solution_B_vars_indexes
-
-# Simplex Algorithm
-solver = SimplexSolver(linear_model=model, start_base=initial_base)
-solver.solve()
-solution = solver.solution
-print(solution)
+print(p2.solution)

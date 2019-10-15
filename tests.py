@@ -1,7 +1,7 @@
-from models.variable import Variable
-from models.restriction import Restriction
-from models.linear_model import LinearModel
-from models.internal.simplex_solver import SimplexSolver
+from models_old.variable import Variable
+from models_old.restriction import Restriction
+from models_old.linear_model import LinearModel
+from models_old.internal.simplex_solver import SimplexSolver
 
 # Declaring Variables
 x1 = Variable(fo_coefficient=-1)

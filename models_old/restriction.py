@@ -1,3 +1,4 @@
+
 class Restriction:
     def __init__(self, coefficients: list, inequality: str, restriction_value: float):
         self.inequality = inequality

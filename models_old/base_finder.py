@@ -1,6 +1,6 @@
-from models.variable import Variable
-from models.linear_model import LinearModel
-from models.internal.simplex_solver import SimplexSolver
+from models_old.variable import Variable
+from models_old.linear_model import LinearModel
+from models_old.internal.simplex_solver import SimplexSolver
 import numpy as np
 
 
@@ -32,7 +32,7 @@ class InitialBaseFinder:
                     if v not in self.artificial_variables:
                         self.artificial_variables.append(v)
 
-            elif r.equality_type == 1:  # >=
+            elif r.equality_type == 1 or r.equality_type == 2:  # >= or =
                 artificial_var = Variable(fo_coefficient=1, v_type='Artificial')
                 artificial_var.internal_initial_index = self.artificial_lm.next_var_index
                 artificial_var.internal_name = 'a{0}'.format(self.artificial_lm.next_var_index + 1)
@@ -45,6 +45,8 @@ class InitialBaseFinder:
                         _r.coefficients.append((0, artificial_var))
 
                 self.artificial_lm.next_var_index = self.artificial_lm.next_var_index + 1
+            else:
+                raise IndexError("A fatal error ocurred. Equality type must be 0 '<=', 1 '>=' or 2 '=' ")
 
         self.artificial_lm.build_objective_function(fo_type='min', variables=self.artificial_variables, __do_not_rename__=True)
         self.artificial_lm.autobuild_matrices()
@@ -81,10 +83,10 @@ class InitialBaseFinder:
             self.solution_N_vars = self.simplex_solver.N_variables
             self.solution_N_vars_indexes = [i.internal_initial_index for i in self.simplex_solver.N_variables]
             self.solution_FO_value = np.dot(self.simplex_solver.CbT, _xb)
-            if self.solution_FO_value >= 0:
+            if self.solution_FO_value == 0:
                 self.solution_success = True
             else:
-                raise ValueError("InitialBaseFinder could not find a feasible initial solution set to your problem")
+                raise InterruptedError("InitialBaseFinder could not find a feasible initial solution set to your problem")
             can_be_multiple = False
             for k in relative_costs:
                 if k == 0:
