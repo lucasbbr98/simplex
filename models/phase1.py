@@ -28,7 +28,6 @@ class Phase1:
         for c in self.model.constraints:
             if c.equality_operator == '>=' or c.equality_operator == '=':
                 artificial_var = ArtificialVariable(name='a{0}'.format(self.model.next_index + 1), initial_index=self.model.next_index)
-                self.model.next_index = self.model.next_index + 1
                 self.model.fo.variables.append(artificial_var)
                 self.model.fo.coefficients.append(1)
                 for _c in self.model.constraints:

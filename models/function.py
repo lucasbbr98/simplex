@@ -57,16 +57,18 @@ class Constraint:
 
         if equality_operator != '<=' and equality_operator != '=' and equality_operator != '>=':
             raise ValueError("Equality operator must be either '<=' or '=' or '>='")
-        self.equality_operator = equality_operator
+
+        if coefficients_variables is None or not all(isinstance(x, tuple) for x in coefficients_variables):
+            raise ValueError("Coefficients variables list must be a list of tuples. Eg: [(1, x1), (2, x2)]")
 
         if right_side is None or not isinstance(right_side, Number):
             raise TypeError("Right side must be a number")
+
+        self.equality_operator = equality_operator
         self.right_side = right_side
 
         self.coefficients = []
         self.variables = []
-        if coefficients_variables is None or not all(isinstance(x, tuple) for x in coefficients_variables):
-            raise ValueError("Coefficients variables list must be a list of tuples. Eg: [(1, x1), (2, x2)]")
 
         for c, v in coefficients_variables:
             if not isinstance(c, Number):
@@ -96,5 +98,5 @@ if __name__ == '__main__':
     x3 = Variable()
 
     fo = ObjectiveFunction('min', [(1, x1), (2, x2)])
-    c1 = Constraint([(1, x1), (2, x2)], '<=', 4)
+    c1 = Constraint([(-1, x1), (-2, x2)], '>=', -4)
     print('Function unit test passed')

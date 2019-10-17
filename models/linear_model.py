@@ -1,5 +1,5 @@
 from models.function import ObjectiveFunction, Constraint
-from models.variable import Variable, SlackVariable, ExcessVariable
+from models.variable import Variable, SlackVariable, ExcessVariable, FreeVariable
 
 
 class LinearModel:
@@ -15,7 +15,6 @@ class LinearModel:
 
         self.constraints = constraints_list
         self.is_standard = False
-        self.next_index = len(self.fo.variables)
 
         for index, v in enumerate(self.fo.variables):
             v.internal_initial_index = index
@@ -38,13 +37,30 @@ class LinearModel:
             self.fo.function_type = 'min'
 
         # Constraints -> Standard form
+        index_has_changed = False
         for index, c in enumerate(self.constraints):
             c.name = 'R{0}'.format(index + 1)
+
+            # Asserting positive right hand side
+            if c.right_side < 0:
+                print('[WARNING]: Changing constraint {0} due to negative right side'.format(c.name))
+                c.right_side = -1 * c.right_side
+
+                for i, _c in enumerate(c.coefficients):
+                    c.coefficients[i] = -1*_c
+
+                if c.equality_operator == '<=':
+                    c.equality_operator = '>='
+                elif c.equality_operator == '>=':
+                    c.equality_operator = '<='
+                else:
+                    pass
+
+            # Slack variables
             if c.equality_operator == '<=':
                 s_var = SlackVariable(name='s{0}'.format(self.next_index + 1), initial_index=self.next_index)
                 self.fo.variables.append(s_var)
                 self.fo.coefficients.append(0)
-                self.next_index = self.next_index + 1
                 for _c in self.constraints:
                     _c.variables.append(s_var)
                     if _c == c:
@@ -52,11 +68,11 @@ class LinearModel:
                     else:
                         _c.coefficients.append(0)
 
+            # Excess variables
             elif c.equality_operator == '>=':
                 e_var = ExcessVariable(name='e{0}'.format(self.next_index + 1), initial_index=self.next_index)
                 self.fo.variables.append(e_var)
                 self.fo.coefficients.append(0)
-                self.next_index = self.next_index + 1
                 for _c in self.constraints:
                     _c.variables.append(e_var)
                     if _c == c:
@@ -64,12 +80,46 @@ class LinearModel:
                     else:
                         _c.coefficients.append(0)
 
+            # Ignoring '='
             elif c.equality_operator == '=':
                 pass
             else:
                 raise ValueError("Equality operator must be either: '<=' or '=' or '>='")
 
+            # Finding if there are any non positive or free variables
+            for i, v in enumerate(c.variables):
+                if v.non_positive:
+                    c.coefficients[i] = -1 * c.coefficients[i]
+
+                elif v.free:
+                    index_has_changed = True
+                    fv_p = FreeVariable(parent_index=v.id, name=v.name + 'p', initial_index=v.id)
+                    fv_n = FreeVariable(parent_index=v.id, name=v.name + 'n', initial_index=v.id + 1)
+                    self.fo.variables[v.id] = fv_p
+                    self.fo.variables.insert(v.id + 1, fv_n)
+                    self.fo.coefficients.insert(v.id + 1, -1*self.fo.coefficients[v.id])
+                    for _id, _v in enumerate(self.fo.variables):
+                        v.internal_initial_index = _id
+
+                    for tmp_c in self.constraints:
+                        tmp_c.variables[i] = fv_p
+                        tmp_c.variables.insert(i+1, fv_n)
+                        tmp_c.coefficients.insert(i+1, -1*tmp_c.coefficients[i])
+
+                    # Updating internal indexes
+                    for __i, __v in enumerate(self.fo.variables):
+                        __v.internal_initial_index = __i
+
+                    for __c in self.constraints:
+                        for __v in __c.variables:
+                            __v.internal_initial_index = self.fo.variables.index(__v)
+
+
         self.is_standard = True
+
+    @property
+    def next_index(self):
+        return len(self.fo.variables)
 
     def __repr__(self):
         m = '\nModel {0}:\n'.format(self.name)
@@ -84,10 +134,12 @@ class LinearModel:
 
 if __name__ == '__main__':
     x1 = Variable(name='x1')
-    x2 = Variable(name='x2')
-    fo = ObjectiveFunction('min', [(80, x1), (60, x2)])
-    c1 = Constraint([(1, x1), (1, x2)], '>=', 1)
-    c2 = Constraint([(-0.05, x1), (0.07, x2)], '<=', 0)
+    x2 = Variable(name='x2', non_positive=True)
+    x3 = Variable(name='x3', free=True)
+    x4 = Variable(name='x4', free=True)
+    fo = ObjectiveFunction('max', [(3, x1), (2, x2), (-1, x3), (1, x4)])
+    c1 = Constraint([(1, x1), (2, x2), (1, x3), (-1, x4)], '<=', 5)
+    c2 = Constraint([(-2, x1), (-4, x2), (1, x3), (1, x4)], '<=', -1)
     model = LinearModel(objective_function=fo, constraints_list=[c1, c2])
     model.standard_form()
     print('Linear Model unit test passed')
