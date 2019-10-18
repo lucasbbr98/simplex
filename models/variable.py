@@ -45,9 +45,10 @@ class Variable:
 
 
 class FreeVariable(Variable):
-    def __init__(self, parent_index: int, name='', initial_index=0):
+    def __init__(self, positive: bool, parent_index: int, name='', initial_index=0):
         super().__init__(name=name, v_type='Free', initial_index=initial_index)
         self.parent_index = parent_index
+        self.positive = positive
 
 
 class SlackVariable(Variable):

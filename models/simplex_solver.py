@@ -15,7 +15,6 @@ class SimplexSolver:
         self.B_variables = base_variables
         self.N_variables = non_base_variables
 
-
     @property
     def B(self):
         return self.model.A[:, [i for i in self.B_variables]]

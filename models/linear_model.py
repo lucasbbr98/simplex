@@ -26,7 +26,6 @@ class LinearModel:
                     c.variables.insert(v.id, v)
                     c.coefficients.insert(v.id, 0)
 
-
     def standard_form(self):
         if self.is_standard:
             return
@@ -94,9 +93,8 @@ class LinearModel:
                     c.coefficients[i] = -1 * c.coefficients[i]
 
                 elif v.free:
-                    index_has_changed = True
-                    fv_p = FreeVariable(parent_index=v.id, name=v.name + 'p', initial_index=v.id)
-                    fv_n = FreeVariable(parent_index=v.id, name=v.name + 'n', initial_index=v.id + 1)
+                    fv_p = FreeVariable(positive=True, parent_index=v.id, name=v.name + 'p', initial_index=v.id)
+                    fv_n = FreeVariable(positive=False, parent_index=v.id, name=v.name + 'n', initial_index=v.id + 1)
                     self.fo.variables[v.id] = fv_p
                     self.fo.variables.insert(v.id + 1, fv_n)
                     self.fo.coefficients.insert(v.id + 1, -1*self.fo.coefficients[v.id])

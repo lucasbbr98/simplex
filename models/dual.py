@@ -4,7 +4,7 @@ from models.function import ObjectiveFunction, Constraint
 from models.linear_model import LinearModel
 
 
-class Dual:
+class DualTransformation:
     def __init__(self, primal: LinearModel):
         if not isinstance(primal, LinearModel):
             raise TypeError("Primal must be a LinearModel() object")
@@ -12,20 +12,19 @@ class Dual:
             raise InterruptedError("Primal can't be on standard form to build it's dual")
 
         self.primal = deepcopy(primal)
-        self.dual = None
 
         self.fo_min_or_max = ''
         if self.primal.fo.function_type == 'min':
-            self.build_dual_from_min_primal()
+            self.dual = self.build_dual_from_min_primal()
         else:
-            self.build_dual_from_max_primal()
+            self.dual = self.build_dual_from_max_primal()
 
-    def build_dual_from_min_primal(self):
+    def build_dual_from_min_primal(self) -> LinearModel:
         # Building FO
         variables = []
         fo_coefficients = [i[0] for i in self.primal.b]
         fo_coefficients_variables = []
-        for index, c in enumerate(primal.constraints):
+        for index, c in enumerate(self.primal.constraints):
             var = None
             if c.equality_operator == '<=':
                 var = Variable(name='y{0}'.format(index + 1), initial_index=index, constraint=VariableConstraint.Negative)
@@ -40,7 +39,7 @@ class Dual:
 
         # Building Constraints
         constraints_inequalities = []
-        for v in primal.fo.variables:
+        for v in self.primal.fo.variables:
             if v.non_positive:
                 constraints_inequalities.append('>=')
             elif v.free:
@@ -49,8 +48,8 @@ class Dual:
                 constraints_inequalities.append('<=')
 
         constraints = []
-        At = primal.A.transpose()
-        right_side = primal.fo.coefficients
+        At = self.primal.A.transpose()
+        right_side = self.primal.fo.coefficients
         _i = 0
         for row in At:
             const_coefficients_variables = []
@@ -61,14 +60,14 @@ class Dual:
             constraints.append(constraint)
             _i = _i + 1
 
-        self.dual = LinearModel(objective_function=fo, constraints_list=constraints, name=primal.name + '- Dual')
+        return LinearModel(objective_function=fo, constraints_list=constraints, name=self.primal.name + '- Dual')
 
-    def build_dual_from_max_primal(self):
+    def build_dual_from_max_primal(self) -> LinearModel:
         # Building FO
         variables = []
         fo_coefficients = [i[0] for i in self.primal.b]
         fo_coefficients_variables = []
-        for index, c in enumerate(primal.constraints):
+        for index, c in enumerate(self.primal.constraints):
             var = None
             if c.equality_operator == '<=':
                 var = Variable(name='y{0}'.format(index + 1), initial_index=index)
@@ -83,7 +82,7 @@ class Dual:
 
         # Building Constraints
         constraints_inequalities = []
-        for v in primal.fo.variables:
+        for v in self.primal.fo.variables:
             if v.non_positive:
                 constraints_inequalities.append('<=')
             elif v.free:
@@ -92,8 +91,8 @@ class Dual:
                 constraints_inequalities.append('>=')
 
         constraints = []
-        At = primal.A.transpose()
-        right_side = primal.fo.coefficients
+        At = self.primal.A.transpose()
+        right_side = self.primal.fo.coefficients
         _i = 0
         for row in At:
             const_coefficients_variables = []
@@ -104,7 +103,7 @@ class Dual:
             constraints.append(constraint)
             _i = _i + 1
 
-        self.dual = LinearModel(objective_function=fo, constraints_list=constraints, name=primal.name + '- Dual')
+        return LinearModel(objective_function=fo, constraints_list=constraints, name=self.primal.name + '- Dual')
 
 
 if __name__ == '__main__':
@@ -116,7 +115,7 @@ if __name__ == '__main__':
     c2 = Constraint([(3, x1), (4, x2)], '<=', 5)
 
     primal = LinearModel(objective_function=fo, constraints_list=[c1, c2])
-    dual_transformation = Dual(primal=primal)
+    dual_transformation = DualTransformation(primal=primal)
     dual = dual_transformation.dual
     print('Dual unit test passed')
 
