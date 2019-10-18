@@ -1,4 +1,4 @@
-from models.variable import Variable
+from models.variable import Variable, VariableConstraint
 from models.function import ObjectiveFunction, Constraint
 from models.linear_model import LinearModel
 from models.phase1 import Phase1
@@ -32,7 +32,7 @@ print(p2.solution)
 # Difficult
 
 x1 = Variable(name='x1')
-x2 = Variable(name='x2', free=True)
+x2 = Variable(name='x2', constraint=VariableConstraint.Unrestricted)
 fo = ObjectiveFunction('max', [(30, x1), (-4, x2)])
 c1 = Constraint([(1, x1)], '<=', 5)
 c2 = Constraint([(5, x1), (-1, x2)], '<=', 30)

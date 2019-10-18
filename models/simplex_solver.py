@@ -9,25 +9,16 @@ class SimplexSolver:
 
         # Initial population
         self.model = linear_model
-        self.m = len(linear_model.constraints)
-        self.n = len(linear_model.fo.variables)
-        self.fix_variables = self.n - self.m
-        self.A = np.zeros(shape=(self.m, self.n))
-        self.b = np.zeros(shape=(self.m, 1))
+
 
         # Getting constructor input
         self.B_variables = base_variables
         self.N_variables = non_base_variables
 
-        # Building A and b
-        for index, c in enumerate(self.model.constraints):
-            self.A[index] = c.coefficients
-            self.b[index] = c.right_side
-
 
     @property
     def B(self):
-        return self.A[:, [i for i in self.B_variables]]
+        return self.model.A[:, [i for i in self.B_variables]]
 
     @property
     def B_inv(self):
@@ -35,11 +26,11 @@ class SimplexSolver:
 
     @property
     def N(self):
-        return self.A[:, [i for i in self.N_variables]]
+        return self.model.A[:, [i for i in self.N_variables]]
 
     @property
     def xb(self):
-        return np.dot(self.B_inv, self.b)
+        return np.dot(self.B_inv, self.model.b)
 
 
     @property

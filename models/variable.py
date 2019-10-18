@@ -1,13 +1,36 @@
+from enum import Enum
+
+
+class VariableConstraint(Enum):
+    Positive = 1
+    Negative = 2
+    Unrestricted = 3
+    Integer = 4
+
+
 class Variable:
-    def __init__(self, name='', v_type='Variable', initial_index=0, free=False, non_positive=False):
+    def __init__(self, name='', v_type='Variable', initial_index=0, constraint: VariableConstraint = VariableConstraint.Positive):
         self.name = name
 
         # Internal stuff, don't mess up :D
         self.internal_name = name
         self.internal_initial_index = initial_index
         self.type = v_type  # Variable, Slack, Excess
-        self.free = free  # If free == True, then x may be positive or negative
-        self.non_positive = non_positive  # If non_positive == True, then x <= 0 assumed
+
+        # Backwards compatibility
+        self.free = False
+        self.non_positive = False
+        self.integer = False
+
+        if not isinstance(constraint, VariableConstraint):
+            raise ValueError("variable_constraint must be a VariableConstraint() enum object")
+
+        if constraint == VariableConstraint.Unrestricted:
+            self.free = True  # If free == True, then x may be positive or negative
+        elif constraint == VariableConstraint.Negative:
+            self.non_positive = True  # If negative == True, then x <= 0 assumed
+        elif constraint == VariableConstraint.Integer:
+            self.integer = True
 
     @property
     def id(self):

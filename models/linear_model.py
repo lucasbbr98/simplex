@@ -1,3 +1,4 @@
+import numpy as np
 from models.function import ObjectiveFunction, Constraint
 from models.variable import Variable, SlackVariable, ExcessVariable, FreeVariable
 
@@ -24,6 +25,7 @@ class LinearModel:
                 if v not in c.variables:
                     c.variables.insert(v.id, v)
                     c.coefficients.insert(v.id, 0)
+
 
     def standard_form(self):
         if self.is_standard:
@@ -121,6 +123,33 @@ class LinearModel:
     def next_index(self):
         return len(self.fo.variables)
 
+    @property
+    def m(self):
+        return len(self.constraints)
+
+    @property
+    def n(self):
+        return len(self.fo.variables)
+
+    @property
+    def fix_variables(self):
+        return self.n - self.m
+
+    @property
+    def A(self):
+        _A = np.zeros(shape=(self.m, self.n))
+        for index, c in enumerate(self.constraints):
+            _A[index] = c.coefficients
+
+        return _A
+
+    @property
+    def b(self):
+        _b = np.zeros(shape=(self.m, 1))
+        for index, c in enumerate(self.constraints):
+            _b[index] = c.right_side
+        return _b
+
     def __repr__(self):
         m = '\nModel {0}:\n'.format(self.name)
         m = m + 'min Fo(x)= '
@@ -134,7 +163,7 @@ class LinearModel:
 
 if __name__ == '__main__':
     x1 = Variable(name='x1')
-    x2 = Variable(name='x2', non_positive=True)
+    x2 = Variable(name='x2', negative=True)
     x3 = Variable(name='x3', free=True)
     x4 = Variable(name='x4', free=True)
     fo = ObjectiveFunction('max', [(3, x1), (2, x2), (-1, x3), (1, x4)])

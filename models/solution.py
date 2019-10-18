@@ -5,8 +5,8 @@ from models.simplex_solver import SimplexSolver
 class Solution:
     def __init__(self, solver: SimplexSolver):
         self.model = solver
-        self.A = solver.A
-        self.b = solver.b
+        self.A = solver.model.A
+        self.b = solver.model.b
         self.fo_value = solver.fo_value
 
         self.decision_variables = []
