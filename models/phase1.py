@@ -6,6 +6,10 @@ from models.function import ObjectiveFunction, Constraint
 from models.variable import SlackVariable, ArtificialVariable, Variable
 
 
+class InfeasibleError(Exception):
+    pass
+
+
 class Phase1:
     def __init__(self, linear_model: LinearModel, max_iterations=1000):
         # Integrity check
@@ -74,7 +78,7 @@ class Phase1:
         # Is my base optimal?
         if variable_join_N_index is None:
             if solver.fo_value != 0:
-                raise InterruptedError("Infeasible problem")
+                raise InfeasibleError("Infeasible problem")
 
             return
 

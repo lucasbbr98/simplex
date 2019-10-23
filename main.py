@@ -1,9 +1,7 @@
 from models.variable import Variable, VariableConstraint
 from models.function import ObjectiveFunction, Constraint
 from models.linear_model import LinearModel
-from models.phase1 import Phase1
-from models.phase2 import Phase2
-from models.dual import DualTransformation
+from models.solver import LinearSolver
 
 ''''
 x1 = Variable(name='x1')
@@ -31,19 +29,16 @@ print(p2.solution)
 '''
 
 # Problem setup
+x1 = Variable(name='x1', integer=True)
+x2 = Variable(name='x2', integer=True)
 
-x1 = Variable(name='x1')
-x2 = Variable(name='x2', constraint=VariableConstraint.Unrestricted)
-fo = ObjectiveFunction('max', [(30, x1), (-4, x2)])
-c1 = Constraint([(1, x1)], '<=', 5)
-c2 = Constraint([(5, x1), (-1, x2)], '<=', 30)
-model = LinearModel(objective_function=fo, constraints_list=[c1, c2])
+fo = ObjectiveFunction('max', [(21, x1), (11, x2)])
+c1 = Constraint([(7, x1), (4, x2)], '<=', 13)
 
-p1 = Phase1(linear_model=model)
-initial_base = p1.find_base()
-p2 = Phase2(linear_model=model, base_indexes=p1.base_variables)
-p2.solve()
-print(p2.solution)
+model = LinearModel(objective_function=fo, constraints_list=[c1])
+solver = LinearSolver(linear_model=model)
+
+print(solver.solution.decision_variables)
 
 
 

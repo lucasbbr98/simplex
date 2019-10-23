@@ -19,10 +19,10 @@ class LinearModel:
 
         for index, v in enumerate(self.fo.variables):
             v.internal_initial_index = index
-
         for v in self.fo.variables:
             for c in self.constraints:
-                if v not in c.variables:
+                internal_names = [n.internal_name for n in c.variables]
+                if v not in c.variables and v.internal_name not in internal_names:
                     c.variables.insert(v.id, v)
                     c.coefficients.insert(v.id, 0)
 

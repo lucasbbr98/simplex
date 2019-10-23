@@ -59,7 +59,6 @@ class Solution:
 
             self.variables.append((value, v))
 
-
     def __str__(self):
         return str(self.variables)
 
