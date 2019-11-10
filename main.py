@@ -3,42 +3,36 @@ from models.function import ObjectiveFunction, Constraint
 from models.linear_model import LinearModel
 from models.solver import LinearSolver
 
-''''
-x1 = Variable(name='x1')
-x2 = Variable(name='x2')
-x3 = Variable(name='x3')
-fo = ObjectiveFunction('max', [(4, x1), (10, x2), (6, x3)])
-
-c1 = Constraint([(0.03, x1), (0.15, x2), (0.10, x3)], '<=', 400)
-c2 = Constraint([(0.06, x1), (0.12, x2), (0.10, x3)], '<=', 400)
-c3 = Constraint([(0.05, x1), (0.10, x2), (0.12, x3)], '<=', 500)
-c4 = Constraint([(2, x2), (1.2, x3)], '<=', 2000)
-c5 = Constraint([(1, x1)], '<=', 6000)
-c6 = Constraint([(1, x2)], '<=', 500)
-c7 = Constraint([(1, x3)], '<=', 1000)
-c8 = Constraint([(1, x1)], '>=', 1000)
-c9 = Constraint([(1, x3)], '>=', 100)
-
-model = LinearModel(objective_function=fo, constraints_list=[c1, c2, c3, c4, c5, c6, c7, c8, c9])
-p1 = Phase1(linear_model=model)
-initial_base = p1.find_base()
-p2 = Phase2(linear_model=model, base_indexes=p1.base_variables)
-p2.solve()
-
-print(p2.solution)
-'''
 
 # Problem setup
 x1 = Variable(name='x1', integer=True)
 x2 = Variable(name='x2', integer=True)
 
-fo = ObjectiveFunction('max', [(21, x1), (11, x2)])
-c1 = Constraint([(7, x1), (4, x2)], '<=', 13)
+fo = ObjectiveFunction('max', [(3, x1), (5, x2)])
+c1 = Constraint([(2, x1), (4, x2)], '<=', 25)
+c2 = Constraint([(1, x1)], '<=', 8)
+c3 = Constraint([(2, x2)], '<=', 10)
 
-model = LinearModel(objective_function=fo, constraints_list=[c1])
+model = LinearModel(objective_function=fo, constraints_list=[c1, c2, c3])
 solver = LinearSolver(linear_model=model)
+print(solver.best_solution)
 
-print(solver.solution.decision_variables)
+"""
+# Problem setup
+x1 = Variable(name='x1', integer=True)
+x2 = Variable(name='x2', integer=True)
+
+fo = ObjectiveFunction('max', [(3, x1), (7, x2)])
+c1 = Constraint([(1, x1)], '<=', 3.5)
+c2 = Constraint([(5, x1), (-4, x2)], '<=', 10)
+c3 = Constraint([(4/7, x1), (2, x2)], '<=', 9)
+
+model = LinearModel(objective_function=fo, constraints_list=[c1, c2, c3])
+solver = LinearSolver(linear_model=model)
+print(solver.best_solution)
+"""
+
+
 
 
 

@@ -18,22 +18,27 @@ class Phase1:
 
         # Guarantees standard_form
         self.model = deepcopy(linear_model)
+        self.original_model = deepcopy(linear_model)
         if not self.model.is_standard:
             self.model.standard_form()
 
+        self.original_fo = deepcopy(self.model.fo)
         # Initialize variables
         self.initial_base = None
         self.current_iteration = 0
         self.max_iterations = max_iterations
         self.base_variables = []
         self.non_base_variables = []
+        self.artificial_remains = []
 
         # Updating Constraints
         for c in self.model.constraints:
             if c.equality_operator == '>=' or c.equality_operator == '=':
                 artificial_var = ArtificialVariable(name='a{0}'.format(self.model.next_index + 1), initial_index=self.model.next_index)
                 self.model.fo.variables.append(artificial_var)
+                self.original_fo.variables.append(artificial_var)
                 self.model.fo.coefficients.append(1)
+                self.original_fo.coefficients.append(0)
                 for _c in self.model.constraints:
                     if _c == c:
                         _c.coefficients.append(1)
@@ -77,8 +82,14 @@ class Phase1:
 
         # Is my base optimal?
         if variable_join_N_index is None:
+        # End of simplex
             if solver.fo_value != 0:
                 raise InfeasibleError("Infeasible problem")
+
+            for i in solver.B_variables:
+                for v in solver.model.fo.variables:
+                    if i == v.id and isinstance(v, ArtificialVariable):
+                        self.artificial_remains.append(i)
 
             return
 
@@ -107,12 +118,6 @@ class Phase1:
         self.current_iteration = self.current_iteration + 1
 
         self.__solve_lp__(__solver__=solver)
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
