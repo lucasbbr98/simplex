@@ -17,6 +17,7 @@ model = LinearModel(objective_function=fo, constraints_list=[c1, c2, c3])
 solver = LinearSolver(linear_model=model)
 print(solver.best_solution)
 
+# TODO: Simplex may not be treating degeneracy the right way...
 """
 # Problem setup
 x1 = Variable(name='x1', integer=True)
