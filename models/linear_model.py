@@ -32,7 +32,6 @@ class LinearModel:
 
         # FO: Max -> Min
         if self.fo.function_type == 'max':
-            print("[WARNING]: Transforming 'max' objective function to 'min'")
             for index, c in enumerate(self.fo.coefficients):
                 self.fo.coefficients[index] = -1 * c
             self.fo.function_type = 'min'

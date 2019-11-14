@@ -39,7 +39,7 @@ class SensitivityAnalysis:
             for i in delta_perturbations_change: # Avoids division by zero
                 if i == 0:
                     i = i + 0.000000001
-            actual_perturbations_change = [i/(delta_perturbations_change[index]) for index, i in enumerate(zero_perturbations)]
+            actual_perturbations_change = [i/(delta_perturbations_change[index]) if delta_perturbations_change[index] != 0 else float('inf') for index, i in enumerate(zero_perturbations)]
             negative_perturbations = [i for i in actual_perturbations_change if i < 0]
             if not negative_perturbations or len(negative_perturbations) <= 0:
                 negative_perturbations = [0]
