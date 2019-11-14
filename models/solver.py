@@ -25,8 +25,8 @@ class LinearSolver:
             self.best_solution = None
             self.branch_and_bound()
 
-
     def branch_and_bound(self):
+        # Relaxed Solution
         relaxed_solution = self.solve_two_phase(self.model)
         relaxed_branch = Branch(relaxed_solution)
         if relaxed_branch.has_only_integers or not relaxed_branch.needs_branching or len(relaxed_branch.needs_branching) <= 0:
@@ -71,6 +71,7 @@ class LinearSolver:
             b_up = Branch(solution=s_up)
             b_up.constraints = const_up
             parent_branch.children.append(b_up)
+
             if b_down.feasible:
                 if b_down.feasible and b_down.has_only_integers:
                     possible_solutions.append(b_down)
@@ -79,6 +80,7 @@ class LinearSolver:
                         best_solution = b_down
                 else:
                     needs_further_branching.append(b_down)
+
             if b_up.feasible:
                 if b_up.has_only_integers:
                     possible_solutions.append(b_up)
@@ -107,7 +109,6 @@ class LinearSolver:
                 self.branch_tree = BranchTree(root_branch=relaxed_branch)
                 self.best_solution = best_solution
                 self.all_solutions = possible_solutions
-
 
     @staticmethod
     def solve_two_phase(model):

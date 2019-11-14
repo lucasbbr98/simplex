@@ -1,6 +1,7 @@
 from models.solution import Solution
 from math import isclose, modf
 
+
 class Branch:
     def __init__(self, solution: Solution, children=None, iteration=0):
         if solution is not None and not isinstance(solution, Solution):
@@ -36,7 +37,8 @@ class Branch:
                     self.needs_branching.append(v)
 
         if len(self.needs_branching) > 0:
-            self.needs_branching = sorted(self.needs_branching, key=lambda _v: modf(_v[0])[0], reverse=True)
+            self.needs_branching = sorted(self.needs_branching,
+                                          key=lambda _v: modf(_v[0])[0], reverse=True)
             self.variable_to_branch = self.needs_branching[0]
 
     def __repr__(self):

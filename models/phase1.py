@@ -76,6 +76,10 @@ class Phase1:
         # Who should join the base?
         relative_costs = [self.model.fo.coefficients[i] - np.dot(solver.simplex_multiplierT, solver.N[:, index]) for index, i in enumerate(solver.N_variables)]
         negative_relative_costs = [i for i in relative_costs if i < 0]
+        possible_join_choices = []
+        for n in negative_relative_costs:
+            possible_join_choices.append(relative_costs.index(n))
+
         variable_join_N_index = None
         if len(negative_relative_costs) > 0:
             variable_join_N_index = relative_costs.index(min(negative_relative_costs))
@@ -102,12 +106,26 @@ class Phase1:
         if not y_sanity_check or len(y_sanity_check) <= 0:
             raise InterruptedError("The model has unlimited solutions")
 
-        steps = [item / y[index] if y[index] != 0 else -1 for index, item in enumerate(solver.xb)]
+        steps = [item / y[index] if y[index] > 0 else -1 for index, item in enumerate(solver.xb)]
         steps_excluding_negative = [i for i in steps if i >= 0]
         if len(steps_excluding_negative) <= 0:
             raise InterruptedError("Only negative steps...")
         min_step = min(steps_excluding_negative)
-        variable_leave_B_index = steps.index(min_step)
+
+        brands_possible_leave_choices = []
+        for index, s in enumerate(steps):
+            if s in steps_excluding_negative and s == 0:
+                brands_possible_leave_choices.append(solver.B_variables[index])
+
+
+        variable_leave_B_index = None
+        # Brands Rule
+        if min_step == 0:
+            variable_join_N_index = min(possible_join_choices)
+            min_id = min(brands_possible_leave_choices)
+            variable_leave_B_index = solver.B_variables.index(min_id)
+        else:
+            variable_leave_B_index = steps.index(min_step)
 
         # Updating Base and Non Base
         variable_leave_B = solver.B_variables[variable_leave_B_index]
