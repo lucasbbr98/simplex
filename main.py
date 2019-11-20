@@ -18,6 +18,8 @@ solver = LinearSolver(linear_model=model)
 print(solver.best_solution)
 
 
+
+
 """
 # Problem setup (Branch and Bound with degeneracy
 x1 = Variable(name='x1', integer=True)
